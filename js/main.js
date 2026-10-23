@@ -652,13 +652,63 @@
 
   /* ---------- 실시간 채팅 (더미) ---------- */
   const chatLog = $('#chatLog');
-  const BOT_LINES = [
-    ['vinyl.ha', '오늘 LP 바 가는데 추천 앨범 있나요?'],
-    ['neon_cat', '방금 감정 기록 남겼는데 크레이트에 바로 뜨네 ㅋㅋ'],
-    ['beat.park', '검정치마 신보 들어보신 분?'],
-    ['rainy.day', '비 오는 창가 크레이트 지금 딱이다'],
-    ['lofi.min', '재즈힙합 태그 요즘 너무 좋음']
+  // 더미 대화: 아래 재료를 템플릿에 무작위로 끼워 넣어 매번 다른 줄을 만든다
+  const CHAT_USERS = ['vinyl.ha', 'neon_cat', 'beat.park', 'rainy.day', 'lofi.min', 'jae.digs', 'indie.kim',
+    'citypop.yu', 'late.night.j', 'bass.lee', 'jazz.cafe', 'synth.wave', 'dawn.walker', 'track.hunter',
+    'kpop.daily', 'cassette.yoon', 'dream.pop', 'chill.mode', 'b_side', 'playlist.mia'];
+  const CHAT_SONGS = [
+    ...CRATES.flatMap((c) => c.tracks),
+    ...LISTENING.map(([, t, a]) => [t, a]),
+    ['Hype Boy', 'NewJeans'], ['밤양갱', '비비'], ['Love wins all', '아이유'], ['Mayonaka no Door', '松原みき'],
+    ['Get You', 'Daniel Caesar'], ['Nightcall', 'Kavinsky'], ['Space Song', 'Beach House'], ['So What', 'Miles Davis'],
+    ['나의 사춘기에게', '볼빨간사춘기'], ['Aruarian Dance', 'Nujabes'], ['Super Shy', 'NewJeans'], ['Kiss Me More', 'Doja Cat']
   ];
+  const CHAT_ARTISTS = [...new Set(CHAT_SONGS.map(([, a]) => a))];
+  const CHAT_TAGS = ['#시티팝', '#새벽감성', '#인디발굴', '#비오는날', '#90s', '#공부BGM', '#재즈힙합', '#이별후'];
+  const CHAT_PLACES = ['출근길', '퇴근길', '카페', '도서관', '헬스장', '버스 안', '한강', '새벽 산책', '드라이브', '주말 아침'];
+  const CHAT_TEMPLATES = [
+    '지금 {song} 듣는 중인데 {mood} 그 자체…',
+    '{place}에서 {song} 틀었더니 분위기 완성',
+    '{artist} 노래 중에 제일 좋아하는 거 뭐예요?',
+    '{artist} 신보 들어보신 분?',
+    '{crate} 크레이트 지금 딱이다',
+    '{crate} 크레이트에 {song} 있는 거 실화냐',
+    '{tag} 태그 요즘 너무 좋음',
+    '{tag} 태그 둘러보다가 인생곡 찾음',
+    '오늘 기분 {emoji} {mood}. 추천 받아요!',
+    '방금 {song} {mood}으로 감정 기록 남김 ㅎㅎ',
+    '{song} 이거 {place}용으로 완벽함',
+    '{place}에 들을 노래 추천 좀요 🙏',
+    '{song} 처음 들은 날 아직도 기억남',
+    '{artist} 라이브 영상 보고 왔는데 미쳤어요',
+    '디깅 AI한테 {mood} 무드 노래 물어봤는데 꽤 괜찮네',
+    '오늘 LP 바 가는데 {artist} 앨범 있으려나',
+    '{song} 베이스 라인 들어보세요 진짜',
+    'ㅋㅋㅋ 다들 {place}에서 뭐 들어요?',
+    '@{user} 님 추천해준 {song} 저장했어요 👍',
+    '@{user} 그거 {artist} 맞죠?'
+  ];
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const recentChat = []; // 같은 템플릿·같은 사람이 연달아 나오지 않게
+  const makeChatLine = () => {
+    let tpl, user;
+    do { tpl = pick(CHAT_TEMPLATES); } while (recentChat.includes(tpl));
+    do { user = pick(CHAT_USERS); } while (recentChat.includes(user));
+    recentChat.push(tpl, user);
+    if (recentChat.length > 8) recentChat.splice(0, 2);
+    const [song, songArtist] = pick(CHAT_SONGS);
+    const mood = pick(MOODS);
+    const text = tpl
+      .replace('{song}', `'${song}'`)
+      .replace('{artist}', tpl.includes('{song}') ? songArtist : pick(CHAT_ARTISTS))
+      .replace('{mood}', mood.label)
+      .replace('{emoji}', mood.emoji)
+      .replace('{crate}', `'${pick(CRATES).title}'`)
+      .replace('{tag}', pick(CHAT_TAGS))
+      .replace('{place}', pick(CHAT_PLACES))
+      .replace('{user}', pick(CHAT_USERS.filter((u) => u !== user)));
+    return [user, text];
+  };
   const addMsg = (user, text, isMe = false) => {
     const div = document.createElement('div');
     div.className = `chat__msg${isMe ? ' is-me' : ''}`;
@@ -668,12 +718,17 @@
     while (chatLog.children.length > 40) chatLog.firstChild.remove();
     chatLog.scrollTop = chatLog.scrollHeight;
   };
-  BOT_LINES.slice(0, 3).forEach(([u, t]) => addMsg(u, t));
-  let botIdx = 3;
-  setInterval(() => {
-    const [u, t] = BOT_LINES[botIdx++ % BOT_LINES.length];
-    addMsg(u, t);
-  }, 7000);
+  for (let i = 0; i < 4; i++) addMsg(...makeChatLine());
+  // 3~10초 간격으로 올라오고, 가끔은 두 사람이 연달아 말한다. 접속자 수도 조금씩 오르내린다
+  let chatters = 214;
+  const tickChat = () => {
+    addMsg(...makeChatLine());
+    if (Math.random() < 0.25) setTimeout(() => addMsg(...makeChatLine()), 900 + Math.random() * 1500);
+    chatters = Math.max(150, chatters + Math.round((Math.random() - 0.45) * 6));
+    $('#chatCount').textContent = `· ${chatters}명`;
+    setTimeout(tickChat, 3000 + Math.random() * 7000);
+  };
+  setTimeout(tickChat, 4000);
 
   $('#chatForm').addEventListener('submit', (e) => {
     e.preventDefault();
