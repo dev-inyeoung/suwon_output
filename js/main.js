@@ -33,25 +33,38 @@
   /* ---------- Supabase ---------- */
   const cfg = window.CRATE_SUPABASE || {};
   let db = null; // 연결 실패 시 null → localStorage 모드
-  let me = { id: null, handle: 'me.digger' };
+  let me = { id: null, handle: 'me.digger' }; // Supabase 모드에서 로그아웃 상태면 null
+
+  const fetchProfile = async (client, userId) => {
+    const { data, error } = await client.from('profiles').select('id, handle').eq('id', userId).single();
+    if (error) throw error;
+    return data;
+  };
 
   const connect = async () => {
     if (!cfg.url || !cfg.key || !window.supabase) return;
     try {
       const client = window.supabase.createClient(cfg.url, cfg.key);
       let { data: { session } } = await client.auth.getSession();
-      if (!session) {
-        const { data, error } = await client.auth.signInAnonymously();
-        if (error) throw error;
-        session = data.session;
+      // 예전 익명 로그인 세션은 정리하고 로그아웃 상태로 시작한다
+      if (session?.user.is_anonymous) {
+        await client.auth.signOut({ scope: 'local' });
+        session = null;
       }
-      const { data: profile, error } = await client.from('profiles').select('id, handle').eq('id', session.user.id).single();
-      if (error) throw error;
+      const profile = session ? await fetchProfile(client, session.user.id) : null;
       db = client;
       me = profile;
     } catch (err) {
       console.warn('[crate] Supabase 연결 실패 — localStorage로 동작합니다.', err);
     }
+  };
+
+  // 로그아웃 상태에서 쓰기를 시도하면 로그인 창을 띄운다 (localStorage 모드는 항상 통과)
+  const needAuth = () => {
+    if (!db || me) return false;
+    openAuth('signin');
+    toast('로그인이 필요해요');
+    return true;
   };
 
   const fail = (err) => {
@@ -74,11 +87,11 @@
   /* ---------- Toast ---------- */
   const toastEl = $('#toast');
   let toastTimer;
-  const toast = (msg) => {
+  const toast = (msg, ms = 2200) => {
     toastEl.textContent = msg;
     toastEl.classList.add('is-show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2200);
+    toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), ms);
   };
 
   /* ---------- Header ---------- */
@@ -139,6 +152,7 @@
     note: r.note, isPublic: r.is_public, ts: Date.parse(r.created_at)
   });
   const loadJournal = async () => {
+    if (!me) { journal = []; return; }
     const { data, error } = await db.from('journal_entries').select('*').eq('user_id', me.id);
     if (error) throw error;
     journal = data.map(toEntry);
@@ -213,6 +227,7 @@
         </li>`;
     }).join('');
     $('#timelineEmpty').hidden = list.length > 0;
+    $('#timelineEmpty').textContent = db && !me ? '로그인하면 내 기록이 여기에 쌓여요 🎧' : '아직 기록이 없어요. 첫 곡을 남겨보세요 🎧';
     renderFilter();
     renderSummary();
   };
@@ -236,6 +251,7 @@
 
   $('#journalForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (needAuth()) return;
     const titleEl = $('#songTitle');
     const artistEl = $('#songArtist');
     const errEl = $('#formError');
@@ -350,16 +366,15 @@
   const journalPosts = () => journal.filter((j) => j.isPublic).map((j) => journalPost(j, me.handle)).concat(othersJournal);
 
   const loadFeed = async () => {
+    const othersQuery = db.from('journal_entries').select('*, author:profiles(handle)').eq('is_public', true);
     const [postRes, likeRes, journalRes] = await Promise.all([
       db.from('posts')
         .select('id, type, body, track_title, track_artist, track_mood, like_count, created_at, author:profiles!posts_user_id_fkey(handle), comments(body, created_at, author:profiles!comments_user_id_fkey(handle))')
         .order('created_at', { ascending: false })
         .order('created_at', { referencedTable: 'comments', ascending: true })
         .limit(50),
-      db.from('post_likes').select('post_id').eq('user_id', me.id),
-      db.from('journal_entries')
-        .select('*, author:profiles(handle)')
-        .eq('is_public', true).neq('user_id', me.id)
+      me ? db.from('post_likes').select('post_id').eq('user_id', me.id) : { data: [] },
+      (me ? othersQuery.neq('user_id', me.id) : othersQuery)
         .order('created_at', { ascending: false })
         .limit(30)
     ]);
@@ -442,6 +457,7 @@
     if (!post) return;
 
     if (btn.dataset.act === 'like') {
+      if (needAuth()) return;
       // 낙관적 업데이트 후 실패하면 되돌린다
       toggleLike(post);
       savePosts();
@@ -464,6 +480,7 @@
     const form = e.target.closest('[data-act="comment"]');
     if (!form) return;
     e.preventDefault();
+    if (needAuth()) return;
     const input = $('input', form);
     const text = input.value.trim();
     if (!text) return;
@@ -483,6 +500,7 @@
 
   $('#composer').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (needAuth()) return;
     const ta = $('#postText');
     const text = ta.value.trim();
     if (!text) { ta.focus(); toast('내용을 입력해주세요'); return; }
@@ -558,11 +576,142 @@
 
   $('#chatForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (needAuth()) return;
     const input = $('#chatInput');
     const text = input.value.trim();
     if (!text) return;
     addMsg(me.handle, text, true);
     input.value = '';
+  });
+
+  /* =========================================================
+     로그인 / 회원가입 (이메일 + 비밀번호, Supabase 모드에서만)
+     ========================================================= */
+  const authBtn = $('#authBtn');
+  const userHandle = $('#userHandle');
+  const authDialog = $('#authDialog');
+  const authForm = $('#authForm');
+  const authErr = $('#authError');
+  let authMode = 'signin';
+
+  const renderAuth = () => {
+    authBtn.hidden = !db;
+    authBtn.textContent = me ? '로그아웃' : '로그인';
+    userHandle.hidden = !(db && me);
+    userHandle.textContent = db && me ? `@${me.handle}` : '';
+  };
+
+  const setAuthMode = (mode) => {
+    authMode = mode;
+    const signup = mode === 'signup';
+    $$('[data-mode]', authForm).forEach((t) => {
+      const on = t.dataset.mode === mode;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-selected', String(on));
+    });
+    $('#handleField').hidden = !signup;
+    $('#authTitle').textContent = signup ? 'crate.에 오신 걸 환영해요' : '다시 만나서 반가워요';
+    $('#authSubmit').textContent = signup ? '가입하기' : '로그인';
+    $('#authPassword').autocomplete = signup ? 'new-password' : 'current-password';
+    authErr.textContent = '';
+  };
+
+  const openAuth = (mode = 'signin') => {
+    setAuthMode(mode);
+    if (!authDialog.open) authDialog.showModal();
+    $('#authEmail').focus();
+  };
+
+  const AUTH_ERRORS = {
+    invalid_credentials: '이메일 또는 비밀번호가 맞지 않아요.',
+    email_not_confirmed: '메일 인증을 아직 마치지 않았어요. 받은 편지함을 확인해주세요.',
+    user_already_exists: '이미 가입된 이메일이에요. 로그인해주세요.',
+    weak_password: '비밀번호가 너무 약해요. 더 길고 복잡하게 만들어주세요.',
+    over_email_send_rate_limit: '메일을 너무 자주 보냈어요. 잠시 후 다시 시도해주세요.',
+    over_request_rate_limit: '요청이 너무 많아요. 잠시 후 다시 시도해주세요.'
+  };
+
+  // 로그인 상태가 바뀌면 내 기록·좋아요를 다시 불러온다
+  const reload = async () => {
+    journal = [];
+    posts = [];
+    journalFilter = 'all';
+    try {
+      await Promise.all([loadJournal(), loadFeed()]);
+    } catch (err) {
+      console.error('[crate]', err);
+      toast('데이터를 불러오지 못했어요');
+    }
+    renderAuth();
+    renderJournal();
+    renderFeed();
+  };
+
+  authBtn.addEventListener('click', async () => {
+    if (!me) return openAuth('signin');
+    authBtn.disabled = true;
+    await db.auth.signOut(); // SIGNED_OUT 이벤트에서 화면을 갱신한다
+    authBtn.disabled = false;
+    toast('로그아웃했어요');
+  });
+
+  $('.auth__tabs', authForm).addEventListener('click', (e) => {
+    const t = e.target.closest('[data-mode]');
+    if (t) setAuthMode(t.dataset.mode);
+  });
+  $('#authClose').addEventListener('click', () => authDialog.close());
+  // 폼 바깥(backdrop)을 누르면 닫기
+  authDialog.addEventListener('click', (e) => { if (e.target === authDialog) authDialog.close(); });
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('#authEmail').value.trim();
+    const password = $('#authPassword').value;
+    const handle = $('#authHandle').value.trim().toLowerCase();
+    const signup = authMode === 'signup';
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) { authErr.textContent = '이메일 주소를 확인해주세요.'; return; }
+    if (password.length < 6) { authErr.textContent = '비밀번호는 6자 이상이어야 해요.'; return; }
+    if (signup && handle && !/^[a-z0-9._]{2,24}$/.test(handle)) {
+      authErr.textContent = '닉네임은 영문 소문자, 숫자, 마침표(.), 밑줄(_)로 2~24자예요.';
+      return;
+    }
+    authErr.textContent = '';
+
+    const submitBtn = $('#authSubmit');
+    submitBtn.disabled = true;
+    try {
+      if (signup && handle) {
+        const { data: taken } = await db.from('profiles').select('id').eq('handle', handle).maybeSingle();
+        if (taken) { authErr.textContent = '이미 쓰이는 닉네임이에요.'; return; }
+      }
+      const { data, error } = signup
+        ? await db.auth.signUp({ email, password, options: { data: { handle }, emailRedirectTo: location.href.split('#')[0] } })
+        : await db.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.warn('[crate]', error);
+        authErr.textContent = AUTH_ERRORS[error.code] || error.message;
+        return;
+      }
+      // 메일 인증이 켜져 있으면 세션 없이 돌아온다 (이미 가입된 이메일이면 identities가 비어 있음)
+      if (!data.session) {
+        if (data.user && data.user.identities?.length === 0) { authErr.textContent = AUTH_ERRORS.user_already_exists; return; }
+        authDialog.close();
+        authForm.reset();
+        toast('📧 인증 메일을 보냈어요. 메일의 링크를 누르면 가입이 끝나요', 5000);
+        return;
+      }
+      me = await fetchProfile(db, data.session.user.id);
+      authDialog.close();
+      authForm.reset();
+      await reload();
+      toast(`@${me.handle}님, 반가워요 👋`);
+    } catch (err) {
+      console.error('[crate]', err);
+      authErr.textContent = '잠시 후 다시 시도해주세요.';
+    } finally {
+      submitBtn.disabled = false;
+    }
   });
 
   /* ---------- Init ---------- */
@@ -573,17 +722,18 @@
   (async () => {
     await connect();
     if (db) {
-      journal = [];
-      posts = [];
-      try {
-        await Promise.all([loadJournal(), loadFeed()]);
-      } catch (err) {
-        console.error('[crate]', err);
-        toast('데이터를 불러오지 못했어요');
-      }
+      // 로그아웃 버튼, 세션 만료, 다른 탭에서의 로그아웃 모두 여기로 온다
+      db.auth.onAuthStateChange((event) => {
+        if (event !== 'SIGNED_OUT' || !me) return;
+        me = null;
+        setTimeout(reload); // 콜백 안에서 바로 Supabase를 호출하면 교착될 수 있다
+      });
+      await reload();
+    } else {
+      renderAuth();
+      renderJournal();
+      renderFeed();
     }
-    renderJournal();
-    renderFeed();
   })();
 
   // "n분 전" 표기 갱신 (Supabase 모드에서는 다른 디거들의 새 글도 다시 불러온다)

@@ -1,7 +1,8 @@
 -- =========================================================
 -- crate. — Supabase schema (public)
--- 방문자는 익명 로그인(Anonymous Sign-in)으로 auth.users 계정을 받고,
--- 가입 트리거가 profiles 행을 만든다. 시드용 더미 유저는 auth 계정 없이 profiles에만 존재한다.
+-- 방문자는 이메일 + 비밀번호로 가입해 auth.users 계정을 받고, 가입 트리거가 profiles 행을 만든다.
+-- 로그아웃 상태(anon)는 읽기만 가능. 익명 로그인 세션은 restrictive 정책으로 모든 접근이 막힌다.
+-- 시드용 더미 유저는 auth 계정 없이 profiles에만 존재한다.
 -- =========================================================
 
 -- ---------- 프로필 ----------
@@ -17,9 +18,15 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  wanted text := lower(new.raw_user_meta_data ->> 'handle');
 begin
-  insert into public.profiles (id, handle)
-  values (new.id, 'digger.' || left(replace(new.id::text, '-', ''), 6));
+  -- 회원가입 때 넘긴 handle을 쓰고, 형식이 틀리거나 이미 쓰이면 digger.xxxxxx로 대체
+  if wanted is null or wanted !~ '^[a-z0-9._]{2,24}$'
+     or exists (select 1 from public.profiles where handle = wanted) then
+    wanted := 'digger.' || left(replace(new.id::text, '-', ''), 6);
+  end if;
+  insert into public.profiles (id, handle) values (new.id, wanted);
   return new;
 end;
 $$;
@@ -145,3 +152,25 @@ create policy "comments: 본인만 작성" on public.comments
   for insert to authenticated with check (user_id = (select auth.uid()));
 create policy "comments: 본인만 삭제" on public.comments
   for delete to authenticated using (user_id = (select auth.uid()));
+
+-- 익명 로그인 세션(is_anonymous)은 읽기·쓰기 모두 차단 (이메일 계정만 허용)
+create policy "profiles: 익명 세션 차단" on public.profiles as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
+create policy "journal: 익명 세션 차단" on public.journal_entries as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
+create policy "posts: 익명 세션 차단" on public.posts as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
+create policy "post_likes: 익명 세션 차단" on public.post_likes as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
+create policy "comments: 익명 세션 차단" on public.comments as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));

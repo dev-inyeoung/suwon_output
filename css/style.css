@@ -102,6 +102,7 @@ p { margin: 0; }
 .nav a { color: var(--muted); transition: color .2s; }
 .nav a:hover { color: var(--text); }
 .header__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.header__user { font-weight: 700; font-size: .9rem; color: var(--muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-toggle { display: none; }
 
 /* ---------- Hero ---------- */
@@ -216,13 +217,13 @@ p { margin: 0; }
 .field label, .field legend { font-weight: 700; font-size: .9rem; padding: 0; margin-bottom: 8px; }
 .field legend { margin-bottom: 10px; }
 .field label output { color: var(--accent); }
-input[type="text"], textarea, select {
+input[type="text"], input[type="email"], input[type="password"], textarea, select {
   width: 100%; padding: 14px 16px;
   background: var(--surface-2); border: 1.5px solid transparent; border-radius: 12px;
   transition: border-color .2s, background .2s; resize: vertical;
 }
-input[type="text"]:hover, textarea:hover, select:hover { border-color: #4a4a52; }
-input[type="text"]:focus, textarea:focus, select:focus { outline: 0; border-color: var(--text); background: #2a2a30; }
+input[type="text"]:hover, input[type="email"]:hover, input[type="password"]:hover, textarea:hover, select:hover { border-color: #4a4a52; }
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, textarea:focus, select:focus { outline: 0; border-color: var(--text); background: #2a2a30; }
 input.is-invalid { border-color: #ff5a5a; }
 ::placeholder { color: #75737b; }
 .field__count { position: absolute; right: 12px; bottom: 10px; font-size: .75rem; color: var(--muted); }
@@ -449,6 +450,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line);
   display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: .85rem; flex-wrap: wrap;
 }
+
+/* ---------- Auth dialog ---------- */
+.auth {
+  width: min(420px, 100% - 32px); padding: 0; border: 0; background: transparent; color: var(--text);
+}
+.auth::backdrop { background: rgba(0, 0, 0, .7); backdrop-filter: blur(4px); }
+.auth[open] { animation: rise .3s var(--ease); }
+.auth__form { display: grid; gap: 18px; position: relative; box-shadow: var(--shadow); }
+.auth__close { position: absolute; top: 16px; right: 16px; }
+.auth__title { font-family: var(--font-display); font-size: 1.5rem; padding-right: 40px; }
 
 /* ---------- Toast ---------- */
 .toast {
