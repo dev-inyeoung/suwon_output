@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>crate. — 음악 디깅 커뮤니티</title>
+  <meta name="description" content="내가 들은 노래와 그때의 감정을 기록하고, 다른 디거들과 나누는 음악 커뮤니티" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header class="header" id="top">
+    <div class="header__inner">
+      <a href="#top" class="logo" aria-label="crate. 홈">
+        <span class="logo__mark" aria-hidden="true"></span>
+        <span>crate<span class="logo__dot">.</span></span>
+      </a>
+      <nav class="nav" id="nav" aria-label="주요 메뉴">
+        <a href="#journal">감정 저널</a>
+        <a href="#crates">무드 크레이트</a>
+        <a href="#community">커뮤니티</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="header__actions">
+        <a href="#community" class="btn btn--ghost btn--sm hide-sm">로그인</a>
+        <a href="#journal" class="btn btn--light btn--sm">시작하기</a>
+        <button class="nav-toggle" id="navToggle" aria-label="메뉴 열기" aria-expanded="false">
+          <span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== Hero ===== -->
+    <section class="hero">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <div class="container hero__inner">
+        <div class="hero__copy">
+          <span class="eyebrow">음악 디깅 커뮤니티</span>
+          <h1 class="hero__title">오늘 들은 노래,<br />그때의 <em>기분</em>까지.</h1>
+          <p class="hero__desc">
+            플레이리스트엔 남지 않는 것들이 있어요. 그 노래를 처음 들은 순간의 공기, 마음.
+            crate.에 기록하고, 같은 결을 가진 디거들과 나눠보세요.
+          </p>
+          <div class="hero__cta">
+            <a href="#journal" class="btn btn--accent">첫 기록 남기기</a>
+            <a href="#community" class="btn btn--outline">디거들 둘러보기</a>
+          </div>
+          <p class="hero__note">가입 없이 둘러볼 수 있어요 · 기록은 언제든 비공개 전환</p>
+        </div>
+
+        <div class="hero__stack" aria-hidden="true">
+          <div class="vinyl">
+            <div class="vinyl__label"></div>
+          </div>
+          <div class="float-card float-card--a">
+            <div class="cover cover--sunset"></div>
+            <div>
+              <strong>새벽 3시의 드라이브</strong>
+              <span>😌 평온 · @lofi.min</span>
+            </div>
+          </div>
+          <div class="float-card float-card--b">
+            <div class="cover cover--ocean"></div>
+            <div>
+              <strong>첫 출근 전날 밤</strong>
+              <span>😬 설렘 · @jae.digs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <ul class="stats">
+          <li><strong data-count="128400">0</strong><span>오늘 기록된 감정</span></li>
+          <li><strong data-count="36200">0</strong><span>활동 중인 디거</span></li>
+          <li><strong data-count="9800">0</strong><span>공유된 크레이트</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===== Features ===== -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section__title center">디깅이 더 즐거워지는 방법</h2>
+        <div class="features">
+          <article class="feature">
+            <div class="feature__icon">✍️</div>
+            <h3>감정 저널</h3>
+            <p>노래 한 곡과 그 순간의 감정을 태그로 남겨요. 쌓이면 나만의 감정 지도가 됩니다.</p>
+          </article>
+          <article class="feature">
+            <div class="feature__icon">📦</div>
+            <h3>무드 크레이트</h3>
+            <p>같은 감정으로 묶인 곡들을 상자째 꺼내 들어요. 장르보다 기분으로 찾는 디깅.</p>
+          </article>
+          <article class="feature">
+            <div class="feature__icon">💬</div>
+            <h3>디거 라운지</h3>
+            <p>숨은 명곡 추천, 곡 제목 찾기, 취향 토론까지. 귀가 닮은 사람들과 대화해요.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Journal (기능 2) ===== -->
+    <section class="section section--tint" id="journal">
+      <div class="container">
+        <div class="section__head">
+          <div>
+            <span class="eyebrow">Mood Journal</span>
+            <h2 class="section__title">어떤 노래를 들었고,<br />어떤 기분이었나요?</h2>
+          </div>
+          <p class="section__desc">기록은 내 계정에 저장돼요. 공개를 켜면 커뮤니티 피드에도 올라갑니다.</p>
+        </div>
+
+        <div class="journal">
+          <form class="journal__form card" id="journalForm" novalidate>
+            <div class="field">
+              <label for="songTitle">곡 제목</label>
+              <input id="songTitle" name="title" type="text" placeholder="예) 밤양갱" required />
+            </div>
+            <div class="field">
+              <label for="songArtist">아티스트</label>
+              <input id="songArtist" name="artist" type="text" placeholder="예) 비비" required />
+            </div>
+
+            <fieldset class="field">
+              <legend>그때의 감정</legend>
+              <div class="moods" id="moodPicker" role="radiogroup">
+                <!-- JS로 렌더링 -->
+              </div>
+            </fieldset>
+
+            <div class="field">
+              <label for="intensity">감정의 세기 <output id="intensityOut">3</output>/5</label>
+              <input id="intensity" name="intensity" type="range" min="1" max="5" value="3" />
+            </div>
+
+            <div class="field">
+              <label for="songNote">한 줄 메모</label>
+              <textarea id="songNote" name="note" rows="3" maxlength="140" placeholder="어디서, 누구와, 무슨 생각을 하며 들었나요?"></textarea>
+              <span class="field__count"><span id="noteCount">0</span>/140</span>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="isPublic" checked />
+              <span class="switch__track"></span>
+              커뮤니티에 공유하기
+            </label>
+
+            <p class="form-error" id="formError" role="alert"></p>
+            <button type="submit" class="btn btn--accent btn--block">기록 남기기</button>
+          </form>
+
+          <div class="journal__side">
+            <div class="card mood-summary">
+              <div class="mood-summary__head">
+                <h3>나의 감정 분포</h3>
+                <span class="muted" id="entryTotal">0곡</span>
+              </div>
+              <div class="mood-bar" id="moodBar" aria-label="감정 비율"></div>
+              <ul class="mood-legend" id="moodLegend"></ul>
+            </div>
+
+            <div class="card">
+              <div class="mood-summary__head">
+                <h3>최근 기록</h3>
+                <div class="chip-filter" id="journalFilter"></div>
+              </div>
+              <ol class="timeline" id="timeline"></ol>
+              <p class="empty" id="timelineEmpty">아직 기록이 없어요. 첫 곡을 남겨보세요 🎧</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Mood Crates (Spotify plan-card 참고) ===== -->
+    <section class="section" id="crates">
+      <div class="container">
+        <div class="section__head">
+          <div>
+            <span class="eyebrow">Mood Crates</span>
+            <h2 class="section__title">오늘의 기분으로 디깅하기</h2>
+          </div>
+          <p class="section__desc">디거들이 같은 감정으로 기록한 곡을 모았어요.</p>
+        </div>
+        <div class="crates" id="crates-list"></div>
+      </div>
+    </section>
+
+    <!-- ===== Community (기능 1) ===== -->
+    <section class="section section--tint" id="community">
+      <div class="container">
+        <div class="section__head">
+          <div>
+            <span class="eyebrow">Diggers' Lounge</span>
+            <h2 class="section__title">디거 라운지</h2>
+          </div>
+          <p class="section__desc">추천하고, 묻고, 공감하세요. 좋은 음악은 나눌수록 깊어져요.</p>
+        </div>
+
+        <div class="community">
+          <div class="feed-col">
+            <form class="composer card" id="composer">
+              <div class="avatar" style="--h:150">나</div>
+              <div class="composer__body">
+                <textarea id="postText" rows="2" maxlength="300" placeholder="요즘 꽂힌 노래, 찾고 있는 곡, 아무 이야기나..."></textarea>
+                <div class="composer__row">
+                  <select id="postType" aria-label="글 종류">
+                    <option value="recommend">🎧 추천</option>
+                    <option value="question">❓ 질문</option>
+                    <option value="talk">💬 잡담</option>
+                  </select>
+                  <button type="submit" class="btn btn--accent btn--sm">올리기</button>
+                </div>
+              </div>
+            </form>
+
+            <div class="tabs" role="tablist" id="feedTabs">
+              <button role="tab" class="tab is-active" data-filter="all" aria-selected="true">전체</button>
+              <button role="tab" class="tab" data-filter="journal" aria-selected="false">감정 기록</button>
+              <button role="tab" class="tab" data-filter="recommend" aria-selected="false">추천</button>
+              <button role="tab" class="tab" data-filter="question" aria-selected="false">질문</button>
+              <button role="tab" class="tab" data-filter="talk" aria-selected="false">잡담</button>
+            </div>
+
+            <div class="feed" id="feed"></div>
+          </div>
+
+          <aside class="side-col">
+            <div class="card">
+              <h3 class="side-title"><span class="live-dot"></span>지금 듣는 중</h3>
+              <ul class="listening" id="listening"></ul>
+            </div>
+
+            <div class="card chat">
+              <h3 class="side-title">실시간 채팅 <span class="muted" id="chatCount">· 214명</span></h3>
+              <div class="chat__log" id="chatLog" aria-live="polite"></div>
+              <form class="chat__form" id="chatForm">
+                <input type="text" id="chatInput" placeholder="메시지 보내기" maxlength="100" autocomplete="off" />
+                <button type="submit" aria-label="전송">➤</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <h3 class="side-title">인기 태그</h3>
+              <div class="tags">
+                <a href="#community">#시티팝</a><a href="#community">#새벽감성</a><a href="#community">#인디발굴</a>
+                <a href="#community">#비오는날</a><a href="#community">#90s</a><a href="#community">#공부BGM</a>
+                <a href="#community">#재즈힙합</a><a href="#community">#이별후</a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FAQ ===== -->
+    <section class="section" id="faq">
+      <div class="container container--narrow">
+        <h2 class="section__title center">자주 묻는 질문</h2>
+        <div class="faq">
+          <details>
+            <summary>crate.은 음악 스트리밍 서비스인가요?</summary>
+            <p>아니요. crate.은 음악을 직접 재생하지 않고, 듣고 있는 음악에 대한 기록과 대화를 나누는 커뮤니티예요. 쓰시던 스트리밍 앱은 그대로 쓰시면 됩니다.</p>
+          </details>
+          <details>
+            <summary>내 감정 기록은 다른 사람이 볼 수 있나요?</summary>
+            <p>기록할 때 '커뮤니티에 공유하기'를 켠 경우에만 피드에 올라가요. 끈 기록은 나만 볼 수 있어요.</p>
+          </details>
+          <details>
+            <summary>무드 크레이트는 어떻게 만들어지나요?</summary>
+            <p>디거들이 공개로 남긴 기록 중 같은 감정 태그가 붙은 곡들이 자동으로 모여요. 많이 공감받은 곡일수록 앞에 놓입니다.</p>
+          </details>
+          <details>
+            <summary>이용료가 있나요?</summary>
+            <p>기본 기능은 모두 무료예요. 지금은 베타 기간이라 모든 기능을 제한 없이 쓸 수 있어요.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CTA band ===== -->
+    <section class="cta-band">
+      <div class="container cta-band__inner">
+        <h2>당신의 귀를 믿는<br />사람들이 기다리고 있어요.</h2>
+        <a href="#journal" class="btn btn--dark">지금 시작하기</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <a href="#top" class="logo"><span class="logo__mark" aria-hidden="true"></span><span>crate<span class="logo__dot">.</span></span></a>
+        <div>
+          <h4>서비스</h4>
+          <a href="#journal">감정 저널</a><a href="#crates">무드 크레이트</a><a href="#community">디거 라운지</a>
+        </div>
+        <div>
+          <h4>커뮤니티</h4>
+          <a href="#community">가이드라인</a><a href="#community">아티스트 제휴</a><a href="#community">블로그</a>
+        </div>
+        <div>
+          <h4>고객지원</h4>
+          <a href="#faq">FAQ</a><a href="#faq">문의하기</a><a href="#faq">신고센터</a>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© 2026 crate.</span>
+        <span>이용약관 · 개인정보처리방침</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
