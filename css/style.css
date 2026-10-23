@@ -214,6 +214,7 @@ p { margin: 0; }
 .journal__side { display: grid; gap: 24px; }
 
 .field { display: grid; gap: 8px; position: relative; border: 0; padding: 0; margin: 0; min-width: 0; }
+.field[hidden] { display: none; }
 .field label, .field legend { font-weight: 700; font-size: .9rem; padding: 0; margin-bottom: 8px; }
 .field legend { margin-bottom: 10px; }
 .field label output { color: var(--accent); }
@@ -475,6 +476,65 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .auth__close { position: absolute; top: 16px; right: 16px; }
 .auth__title { font-family: var(--font-display); font-size: 1.5rem; padding-right: 40px; }
 
+/* ---------- 디깅 AI ---------- */
+.dig-fab {
+  position: fixed; right: 24px; bottom: 24px; z-index: 90;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 22px; border: 0; border-radius: var(--pill); cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); font-weight: 800;
+  box-shadow: var(--shadow); transition: transform .2s var(--ease);
+}
+.dig-fab:hover { transform: scale(1.04); }
+.dig-fab:focus-visible { outline: 3px solid var(--c-lilac); outline-offset: 3px; }
+.dig-fab[aria-expanded="true"] { background: var(--text); color: var(--bg); }
+
+.dig {
+  position: fixed; right: 24px; bottom: 92px; z-index: 90;
+  width: min(400px, 100% - 32px); height: min(620px, 100vh - 124px);
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 20px; box-shadow: var(--shadow); animation: rise .3s var(--ease);
+}
+.dig[hidden] { display: none; }
+.dig__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dig__title { font-family: var(--font-display); font-size: 1.25rem; }
+.dig__log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+.dig__msg {
+  align-self: flex-start; max-width: 100%; padding: 12px 14px; border-radius: var(--radius);
+  background: var(--surface-2); font-size: .9rem; overflow-wrap: anywhere; animation: rise .3s var(--ease);
+}
+.dig__msg.is-me { align-self: flex-end; max-width: 85%; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.dig__msg.is-error { color: #ff8a8a; }
+.dig__sub { margin-top: 14px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.dig__list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+.dig-track, .dig-user { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--surface); }
+.dig-track .cover { width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.1rem; }
+.dig-track__info, .dig-user > div:last-child { flex: 1; min-width: 0; }
+.dig-track strong, .dig-user strong { display: block; font-size: .88rem; }
+.dig-track span, .dig-user span { color: var(--muted); font-size: .78rem; }
+.dig-track p, .dig-user p { font-size: .8rem; color: #cfccd4; margin-top: 2px; }
+.dig-track em { font-style: normal; color: var(--muted); }
+.dig-track .btn { flex-shrink: 0; padding: 7px 12px; font-size: .78rem; }
+.dig-badge { color: var(--accent); }
+.dig-user .avatar { width: 36px; height: 36px; font-size: .75rem; }
+.dig__typing { display: inline-flex; gap: 4px; padding: 4px 0; }
+.dig__typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+.dig__typing i:nth-child(2) { animation-delay: .2s; }
+.dig__typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.dig__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dig__chips[hidden] { display: none; }
+.dig__chips button {
+  border: 0; cursor: pointer; padding: 6px 12px; border-radius: var(--pill); font-size: .8rem; font-weight: 600;
+  background: transparent; box-shadow: inset 0 0 0 1px #45454c; transition: background .2s, color .2s;
+}
+.dig__chips button:hover { background: var(--text); color: var(--bg); }
+.dig__form { display: flex; gap: 8px; }
+.dig__form input { padding: 10px 14px; border-radius: var(--pill); }
+.dig__form button {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); font-size: .95rem;
+}
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: 32px; z-index: 100;
@@ -545,6 +605,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .hero__cta .btn { flex: 1; }
   .composer .avatar { display: none; }
   .post { padding: 20px; }
+  .dig-fab { right: 16px; bottom: 16px; }
+  .dig { right: 16px; bottom: 80px; height: min(620px, 100vh - 100px); padding: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

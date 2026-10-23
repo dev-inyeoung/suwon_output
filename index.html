@@ -288,6 +288,10 @@
             <p>디거들이 공개로 남긴 기록 중 같은 감정 태그가 붙은 곡들이 자동으로 모여요. 많이 공감받은 곡일수록 앞에 놓입니다.</p>
           </details>
           <details>
+            <summary>디깅 AI는 어떻게 추천하나요?</summary>
+            <p>오른쪽 아래 '디깅 AI'에 지금 기분이나 듣고 싶은 장르를 말하면, 커뮤니티 글과 공개 감정 기록에서 비슷한 곡과 디거를 찾아 추천해요. 로그인해야 쓸 수 있고, 답을 만들 때 내 최근 기록 10개(나만 보기 포함)를 참고해요. 질문과 참고 자료는 답변 생성을 위해 OpenAI와 Upstage로 전달돼요.</p>
+          </details>
+          <details>
             <summary>이용료가 있나요?</summary>
             <p>기본 기능은 모두 무료예요. 지금은 베타 기간이라 모든 기능을 제한 없이 쓸 수 있어요.</p>
           </details>
@@ -354,6 +358,26 @@
       <button type="submit" class="btn btn--accent btn--block" id="authSubmit">로그인</button>
     </form>
   </dialog>
+
+  <!-- ===== 디깅 AI ===== -->
+  <button type="button" class="dig-fab" id="digFab" aria-expanded="false" aria-controls="digPanel">
+    <span aria-hidden="true">✦</span> 디깅 AI
+  </button>
+  <section class="dig card" id="digPanel" aria-labelledby="digTitle" hidden>
+    <header class="dig__head">
+      <div>
+        <h2 class="dig__title" id="digTitle">디깅 AI</h2>
+        <p class="muted">기분이나 장르를 말해주면 곡과 디거를 찾아드려요</p>
+      </div>
+      <button type="button" class="icon-btn" id="digClose" aria-label="디깅 AI 닫기">✕</button>
+    </header>
+    <div class="dig__log" id="digLog" aria-live="polite"></div>
+    <div class="dig__chips" id="digChips"></div>
+    <form class="dig__form" id="digForm">
+      <input type="text" id="digInput" placeholder="예) 비 오는 밤에 들을 잔잔한 재즈" maxlength="500" autocomplete="off" aria-label="디깅 AI에게 메시지" />
+      <button type="submit" aria-label="보내기">➤</button>
+    </form>
+  </section>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

@@ -686,6 +686,135 @@
   });
 
   /* =========================================================
+     디깅 AI (Edge Function dig-chat: Upstage 임베딩 → pgvector 검색 → OpenAI)
+     ========================================================= */
+  const digFab = $('#digFab');
+  const digPanel = $('#digPanel');
+  const digLog = $('#digLog');
+  const digInput = $('#digInput');
+  const DIG_SUGGEST = ['비 오는 밤에 들을 잔잔한 노래', '출근길 텐션 올려줄 시티팝', '나랑 취향 비슷한 디거 찾아줘', '무드 크레이트가 뭐예요?'];
+  let digHistory = []; // 서버로 보내는 대화 ({ role, content })
+  let digTracks = [];  // 추천된 곡 — "기록하기" 버튼이 data-pick 인덱스로 찾는다
+  let digBusy = false;
+
+  const addDig = (html, cls = '') => {
+    const div = document.createElement('div');
+    div.className = `dig__msg ${cls}`;
+    div.innerHTML = html;
+    digLog.appendChild(div);
+    digLog.scrollTop = digLog.scrollHeight;
+    return div;
+  };
+
+  const digTrackHTML = (t) => {
+    const m = t.mood ? moodOf(t.mood) : null;
+    const idx = digTracks.push(t) - 1;
+    return `
+      <li class="dig-track">
+        <div class="cover" style="background:${m ? coverBg(m) : 'var(--line)'}" aria-hidden="true">${m ? m.emoji : '🎵'}</div>
+        <div class="dig-track__info">
+          <strong>${esc(t.title)}</strong>
+          <span>${esc(t.artist)}${t.inCrate ? ' · <b class="dig-badge">crate.</b>' : ''}</span>
+          <p>${esc(t.reason)}${t.diggers.length ? ` <em>${t.diggers.map((h) => `@${esc(h)}`).join(' ')}</em>` : ''}</p>
+        </div>
+        <button type="button" class="btn btn--outline btn--sm" data-pick="${idx}">기록하기</button>
+      </li>`;
+  };
+
+  const digUserHTML = (u) => `
+    <li class="dig-user">
+      <div class="avatar" style="--h:${hue(u.handle)}">${esc(u.handle.slice(0, 1).toUpperCase())}</div>
+      <div>
+        <strong>@${esc(u.handle)}</strong>${u.moods.length ? `<span>${u.moods.map(esc).join(' · ')}</span>` : ''}
+        <p>${esc(u.reason)}</p>
+      </div>
+    </li>`;
+
+  const resetDig = () => {
+    digHistory = [];
+    digTracks = [];
+    digLog.innerHTML = '';
+    addDig(esc(me
+      ? `안녕하세요 @${me.handle}님! 지금 기분이나 상황, 듣고 싶은 장르를 말해주세요. 디거들이 기록한 곡과 취향이 닮은 디거를 찾아드릴게요.`
+      : '지금 기분이나 듣고 싶은 장르를 말해주세요. 디거들이 기록한 곡과 취향이 닮은 디거를 찾아드릴게요.'));
+    $('#digChips').hidden = false;
+  };
+
+  const askDig = async (text) => {
+    if (digBusy || !text) return;
+    if (!db) { addDig(esc('디깅 AI는 서버에 연결됐을 때만 쓸 수 있어요.')); return; }
+    if (needAuth()) return;
+    digBusy = true;
+    $('#digChips').hidden = true;
+    addDig(esc(text), 'is-me');
+    digHistory.push({ role: 'user', content: text });
+    const typing = addDig('<span class="dig__typing" aria-label="답변 준비 중"><i></i><i></i><i></i></span>');
+    try {
+      const { data, error } = await db.functions.invoke('dig-chat', { body: { messages: digHistory } });
+      if (error) {
+        const body = await error.context?.json?.().catch(() => null);
+        throw new Error(body?.error || '디깅 AI가 잠깐 멈췄어요. 잠시 후 다시 시도해주세요.');
+      }
+      typing.remove();
+      addDig(`
+        <p>${esc(data.reply)}</p>
+        ${data.tracks.length ? `<ul class="dig__list">${data.tracks.map(digTrackHTML).join('')}</ul>` : ''}
+        ${data.users.length ? `<p class="dig__sub">취향이 닮은 디거</p><ul class="dig__list">${data.users.map(digUserHTML).join('')}</ul>` : ''}`);
+      // 다음 질문("더 신나는 걸로")이 앞의 추천을 알 수 있게 목록을 같이 넘긴다
+      const picked = data.tracks.map((t) => `${t.title} — ${t.artist}`).concat(data.users.map((u) => `@${u.handle}`));
+      digHistory.push({ role: 'assistant', content: picked.length ? `${data.reply}\n(추천: ${picked.join(', ')})` : data.reply });
+    } catch (err) {
+      console.warn('[crate] 디깅 AI', err);
+      typing.remove();
+      digHistory.pop(); // 답을 못 받은 질문은 대화에서 뺀다
+      addDig(esc(err.message), 'is-error');
+    } finally {
+      digBusy = false;
+    }
+  };
+
+  const setDig = (open) => {
+    digPanel.hidden = !open;
+    digFab.setAttribute('aria-expanded', String(open));
+    if (open) {
+      if (!digLog.children.length) resetDig();
+      digInput.focus();
+    }
+  };
+  digFab.addEventListener('click', () => setDig(digPanel.hidden));
+  $('#digClose').addEventListener('click', () => { setDig(false); digFab.focus(); });
+  digPanel.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setDig(false); digFab.focus(); } });
+
+  $('#digChips').innerHTML = DIG_SUGGEST.map((q) => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+  $('#digChips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-q]');
+    if (b) askDig(b.dataset.q);
+  });
+
+  $('#digForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = digInput.value.trim();
+    if (!text || digBusy) return;
+    digInput.value = '';
+    askDig(text);
+  });
+
+  // 추천 곡을 감정 저널 폼에 채운다
+  digLog.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pick]');
+    if (!b) return;
+    const t = digTracks[+b.dataset.pick];
+    $('#songTitle').value = t.title;
+    $('#songArtist').value = t.artist;
+    $('#songTitle').classList.remove('is-invalid');
+    $('#songArtist').classList.remove('is-invalid');
+    if (t.mood) $(`.mood[data-mood="${t.mood}"]`, moodPicker)?.click();
+    if (window.matchMedia('(max-width: 560px)').matches) setDig(false);
+    $('#journal').scrollIntoView({ behavior: 'smooth' });
+    toast(`🎵 ${t.title} · 감정 저널에 채웠어요`);
+  });
+
+  /* =========================================================
      로그인 / 회원가입 (이메일 + 비밀번호, Supabase 모드에서만)
      ========================================================= */
   const authBtn = $('#authBtn');
@@ -746,6 +875,7 @@
     renderAuth();
     renderJournal();
     renderFeed();
+    if (digLog.children.length) resetDig(); // 계정이 바뀌면 AI 대화도 새로 시작
   };
 
   authBtn.addEventListener('click', async () => {

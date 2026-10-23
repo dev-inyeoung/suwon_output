@@ -174,3 +174,110 @@ create policy "comments: 익명 세션 차단" on public.comments as restrictive
   for all to authenticated
   using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
   with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
+
+-- =========================================================
+-- 디깅 AI (RAG) — Edge Function dig-chat이 service role로만 읽고 쓴다
+-- Upstage solar-embedding-2 (1024차원) 벡터를 pgvector에 저장하고 OpenAI로 답을 만든다.
+-- 클라이언트(anon/authenticated)는 아래 테이블·뷰·함수에 접근할 수 없다.
+-- =========================================================
+create extension if not exists vector with schema extensions;
+
+-- 디깅 AI가 검색하는 문서: 곡(track) · 디거(user) · 사이트 안내(page). dig-chat이 dig_sources와 맞춰 갱신한다.
+create table public.dig_documents (
+  id         text primary key,
+  kind       text not null check (kind in ('track', 'user', 'page')),
+  content    text not null,
+  metadata   jsonb not null default '{}',
+  embedding  extensions.vector(1024) not null,
+  updated_at timestamptz not null default now()
+);
+create index dig_documents_embedding_idx on public.dig_documents
+  using hnsw (embedding extensions.vector_cosine_ops);
+create index dig_documents_kind_idx on public.dig_documents (kind);
+
+-- 사용량 제한용 호출 기록 (dig-chat이 service role로 쓴다)
+create table public.dig_chat_log (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null references public.profiles (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index dig_chat_log_user_idx on public.dig_chat_log (user_id, created_at desc);
+
+-- 색인할 원문: 커뮤니티 글 + 공개 감정 기록을 곡 단위, 디거 단위로 묶는다
+create view public.dig_sources with (security_invoker = true) as
+with moods (id, label) as (values
+  ('happy', '행복'), ('calm', '평온'), ('excited', '설렘'),
+  ('nostalgic', '그리움'), ('sad', '슬픔'), ('hype', '신남')
+),
+acts as (
+  select pr.handle, p.body as note, p.track_title as title, p.track_artist as artist,
+         p.track_mood as mood, p.like_count as likes, p.created_at
+  from public.posts p join public.profiles pr on pr.id = p.user_id
+  union all
+  select pr.handle, nullif(j.note, ''), j.title, j.artist, j.mood, 0, j.created_at
+  from public.journal_entries j join public.profiles pr on pr.id = j.user_id
+  where j.is_public
+),
+tracks as (
+  select lower(a.title) || '|' || lower(a.artist) as key,
+         min(a.title) as title, min(a.artist) as artist,
+         coalesce(array_agg(distinct m.label) filter (where m.label is not null), '{}') as moods,
+         array_agg(distinct a.handle) as handles,
+         string_agg(a.note, ' / ' order by a.likes desc) filter (where a.note is not null) as notes,
+         sum(a.likes)::int as likes
+  from acts a left join moods m on m.id = a.mood
+  where a.title is not null and a.artist is not null
+  group by 1
+),
+users as (
+  select a.handle,
+         coalesce(array_agg(distinct m.label) filter (where m.label is not null), '{}') as moods,
+         string_agg(distinct a.title || ' — ' || a.artist, ', ') filter (where a.title is not null) as tracks,
+         string_agg(a.note, ' / ' order by a.created_at desc) filter (where a.note is not null) as notes,
+         count(*)::int as acts
+  from acts a left join moods m on m.id = a.mood
+  group by a.handle
+)
+select 'track:' || key as id, 'track' as kind,
+       left(format(E'곡: %s — %s\n감정: %s\n디거들의 한마디: %s\n올린 디거: %s',
+              title, artist, array_to_string(moods, ', '), coalesce(notes, '-'),
+              (select string_agg('@' || h, ', ') from unnest(handles) h)), 2000) as content,
+       jsonb_build_object('title', title, 'artist', artist, 'moods', moods, 'handles', handles, 'likes', likes) as metadata
+from tracks
+union all
+select 'user:' || handle, 'user',
+       left(format(E'디거 @%s\n자주 남긴 감정: %s\n올린 곡: %s\n남긴 글: %s',
+              handle, array_to_string(moods, ', '), coalesce(tracks, '-'), coalesce(notes, '-')), 2000),
+       jsonb_build_object('handle', handle, 'moods', moods, 'acts', acts)
+from users;
+
+-- 쿼리 벡터와 가까운 문서 (kind별). Edge Function(service role)에서만 호출한다
+create or replace function public.match_dig_documents(
+  query_embedding extensions.vector(1024), match_kind text, match_count int default 6
+)
+returns table (id text, kind text, content text, metadata jsonb, similarity float)
+language sql stable
+set search_path = ''
+as $$
+  select d.id, d.kind, d.content, d.metadata,
+         1 - (d.embedding operator(extensions.<=>) query_embedding) as similarity
+  from public.dig_documents d
+  where d.kind = match_kind
+  order by d.embedding operator(extensions.<=>) query_embedding
+  limit least(match_count, 20);
+$$;
+
+revoke all on public.dig_documents, public.dig_chat_log, public.dig_sources from anon, authenticated;
+revoke execute on function public.match_dig_documents(extensions.vector, text, int) from public, anon, authenticated;
+
+alter table public.dig_documents enable row level security;
+alter table public.dig_chat_log  enable row level security;
+
+create policy "dig_documents: 익명 세션 차단" on public.dig_documents as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
+create policy "dig_chat_log: 익명 세션 차단" on public.dig_chat_log as restrictive
+  for all to authenticated
+  using (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false))
+  with check (not coalesce(((select auth.jwt()) ->> 'is_anonymous')::boolean, false));
