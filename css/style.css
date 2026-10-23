@@ -226,6 +226,20 @@ input[type="text"]:hover, input[type="email"]:hover, input[type="password"]:hove
 input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, textarea:focus, select:focus { outline: 0; border-color: var(--text); background: #2a2a30; }
 input.is-invalid { border-color: #ff5a5a; }
 ::placeholder { color: #75737b; }
+.song-search__results {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20; margin: 6px 0 0; padding: 6px;
+  list-style: none; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow); max-height: 320px; overflow-y: auto;
+}
+.song-search__results li { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 10px; cursor: pointer; }
+.song-search__results li:hover, .song-search__results li.is-active { background: var(--line); }
+.song-search__results li.song-search__msg { cursor: default; color: var(--muted); font-size: .85rem; justify-content: center; }
+.song-search__results li.song-search__msg:hover { background: transparent; }
+.song-search__results img { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; background: var(--surface); }
+.song-search__results div { min-width: 0; }
+.song-search__results strong, .song-search__results span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.song-search__results strong { font-size: .9rem; }
+.song-search__results span { color: var(--muted); font-size: .8rem; }
 .field__count { position: absolute; right: 12px; bottom: 10px; font-size: .75rem; color: var(--muted); }
 
 input[type="range"] { width: 100%; accent-color: var(--accent); }

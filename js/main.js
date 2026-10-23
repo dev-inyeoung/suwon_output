@@ -178,6 +178,107 @@
   const noteEl = $('#songNote');
   noteEl.addEventListener('input', () => { $('#noteCount').textContent = noteEl.value.length; });
 
+  /* ---------- 노래 찾기 (iTunes Search API, 키 없이 CORS 허용) ----------
+     country=KR 스토어는 결과가 비어서 기본(US) 스토어를 쓴다. 한국 곡도 한글로 검색되지만
+     제목은 영문 표기로 올 수 있다 (예: 밤편지 → Through the Night). 고른 뒤 직접 고칠 수 있다. */
+  const searchEl = $('#songSearch');
+  const resultsEl = $('#songResults');
+  let songResults = [];
+  let activeIdx = -1;
+  let searchTimer;
+  let searchSeq = 0; // 늦게 도착한 이전 검색 결과는 버린다
+
+  const searchSongs = async (term) => {
+    const url = `https://itunes.apple.com/search?${new URLSearchParams({ term, media: 'music', entity: 'song', limit: 8 })}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`iTunes ${res.status}`);
+    const { results } = await res.json();
+    return results.map((r) => ({
+      title: r.trackName, artist: r.artistName, album: r.collectionName,
+      art: (r.artworkUrl100 || r.artworkUrl60 || '').replace(/^http:/, 'https:')
+    }));
+  };
+
+  const setResultsOpen = (open) => {
+    resultsEl.hidden = !open;
+    searchEl.setAttribute('aria-expanded', String(open));
+    if (!open) { activeIdx = -1; searchEl.removeAttribute('aria-activedescendant'); }
+  };
+  const showSearchMsg = (msg) => {
+    songResults = [];
+    resultsEl.innerHTML = `<li class="song-search__msg" role="presentation">${msg}</li>`;
+    setResultsOpen(true);
+  };
+  const renderResults = () => {
+    if (!songResults.length) return showSearchMsg('검색 결과가 없어요. 아래에 직접 입력해도 돼요');
+    resultsEl.innerHTML = songResults.map((s, i) => `
+      <li id="song-opt-${i}" role="option" data-idx="${i}" aria-selected="${i === activeIdx}" class="${i === activeIdx ? 'is-active' : ''}">
+        <img src="${esc(s.art)}" alt="" loading="lazy" />
+        <div><strong>${esc(s.title)}</strong><span>${esc(s.artist)}${s.album ? ` · ${esc(s.album)}` : ''}</span></div>
+      </li>`).join('');
+    setResultsOpen(true);
+    if (activeIdx >= 0) {
+      searchEl.setAttribute('aria-activedescendant', `song-opt-${activeIdx}`);
+      $(`#song-opt-${activeIdx}`).scrollIntoView({ block: 'nearest' });
+    }
+  };
+
+  const pickSong = (s) => {
+    $('#songTitle').value = s.title;
+    $('#songArtist').value = s.artist;
+    $('#songTitle').classList.remove('is-invalid');
+    $('#songArtist').classList.remove('is-invalid');
+    searchEl.value = '';
+    setResultsOpen(false);
+    toast(`🎵 ${s.title} · ${s.artist}`);
+  };
+
+  searchEl.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    const term = searchEl.value.trim();
+    const seq = ++searchSeq;
+    if (term.length < 2) { setResultsOpen(false); return; }
+    searchTimer = setTimeout(async () => {
+      showSearchMsg('찾는 중…');
+      try {
+        const found = await searchSongs(term);
+        if (seq !== searchSeq) return;
+        songResults = found;
+        activeIdx = -1;
+        renderResults();
+      } catch (err) {
+        if (seq !== searchSeq) return;
+        console.warn('[crate] 노래 검색 실패', err);
+        showSearchMsg('검색하지 못했어요. 아래에 직접 입력해주세요');
+      }
+    }, 300);
+  });
+
+  searchEl.addEventListener('keydown', (e) => {
+    if (resultsEl.hidden || e.isComposing) return; // 한글 조합 중의 키 입력은 무시
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!songResults.length) return;
+      e.preventDefault();
+      const n = songResults.length;
+      activeIdx = e.key === 'ArrowDown' ? (activeIdx + 1) % n : (activeIdx - 1 + n) % n;
+      renderResults();
+    } else if (e.key === 'Enter') {
+      e.preventDefault(); // 검색창에서 Enter로 기록이 제출되지 않게
+      if (songResults[activeIdx]) pickSong(songResults[activeIdx]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setResultsOpen(false);
+    }
+  });
+  // mousedown 기본 동작을 막아 blur보다 클릭이 먼저 처리되게 한다
+  resultsEl.addEventListener('mousedown', (e) => e.preventDefault());
+  resultsEl.addEventListener('click', (e) => {
+    const li = e.target.closest('[data-idx]');
+    if (li) pickSong(songResults[+li.dataset.idx]);
+  });
+  searchEl.addEventListener('blur', () => setResultsOpen(false));
+  searchEl.addEventListener('focus', () => { if (songResults.length && searchEl.value.trim().length >= 2) renderResults(); });
+
   const filterWrap = $('#journalFilter');
   const renderFilter = () => {
     const used = MOODS.filter((m) => journal.some((j) => j.mood === m.id));

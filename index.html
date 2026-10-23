@@ -123,6 +123,12 @@
 
         <div class="journal">
           <form class="journal__form card" id="journalForm" novalidate>
+            <div class="field song-search">
+              <label for="songSearch">노래 찾기</label>
+              <input id="songSearch" type="text" placeholder="곡 제목이나 가수 이름으로 검색" autocomplete="off"
+                role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="songResults" />
+              <ul class="song-search__results" id="songResults" role="listbox" aria-label="검색 결과" hidden></ul>
+            </div>
             <div class="field">
               <label for="songTitle">곡 제목</label>
               <input id="songTitle" name="title" type="text" placeholder="예) 밤양갱" required />
